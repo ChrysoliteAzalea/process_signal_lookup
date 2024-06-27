@@ -66,6 +66,33 @@ fn main() -> std::io::Result<()> {
       println!("Usage: {} <PID>", program_name);
       return Ok(())
    }
+   if str_pid.starts_with("-d") || str_pid.starts_with("--decode")
+   {
+      // with -d, the signal mask is supplied as a separate argument
+      // with --decode, the signal mask may be supplied either as a separate argument or as a part of the parameter
+      let signal_mask = if str_pid.starts_with("-d")
+      {
+         arg.next().expect("Please, supply a signal mask after the \"-d\" argument!")
+      }
+      else
+      {
+         arg.next().unwrap_or_else(||
+         {
+            str_pid.strip_prefix("--decode=").expect("Please, supply a signal mask after the \"--decode\" argument!").to_string()
+         })
+      };
+      let signal_vector = get_signals(&signal_mask)?;
+      for signal in signal_vector
+      {
+         let mut printable_name = name_signal(signal)?;
+         printable_name = printable_name.trim().to_string();
+         if printable_name.len() > 3
+         {
+            println!("{}", printable_name);
+         }
+      }
+      return Ok(())
+   }
    let selected = i64::from_str_radix(&str_pid, 10).unwrap();
    let mut status_file = BufReader::new(File::open(format!("/proc/{}/status", selected))?).lines();
    let mut caught = Vec::<u32>::with_capacity(64);
