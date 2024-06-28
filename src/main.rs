@@ -20,7 +20,7 @@ fn name_signal(num: u32) -> std::io::Result<String>
    Ok(String::from("SIG") + &result)
 }
 
-fn get_signals(s: &str) -> std::io::Result<Vec<u32>>
+fn get_signals(s: &str) -> Vec<u32>
 {
    let mut result = Vec::<u32>::new();
    let mut it_v: Vec<char> = s.chars().collect();
@@ -47,7 +47,7 @@ fn get_signals(s: &str) -> std::io::Result<Vec<u32>>
       }
       offset += 4;
    } // */
-   Ok(result)
+   result
 }
 
 fn main() -> std::io::Result<()> {
@@ -81,7 +81,7 @@ fn main() -> std::io::Result<()> {
             str_pid.strip_prefix("--decode=").expect("Please, supply a signal mask after the \"--decode\" argument!").to_string()
          })
       };
-      let signal_vector = get_signals(&signal_mask)?;
+      let signal_vector = get_signals(&signal_mask);
       for signal in signal_vector
       {
          let mut printable_name = name_signal(signal)?;
@@ -105,23 +105,23 @@ fn main() -> std::io::Result<()> {
       let line = l?;
       if line.starts_with("SigCgt:")
       {
-         caught = get_signals(line.strip_prefix("SigCgt:").expect("An error has occurred while parsing the list of caught signals for this process"))?;
+         caught = get_signals(line.strip_prefix("SigCgt:").expect("An error has occurred while parsing the list of caught signals for this process"));
       }
       if line.starts_with("SigIgn:")
       {
-         ignored = get_signals(line.strip_prefix("SigIgn:").expect("An error has occurred while parsing the list of ignored signals for this process"))?;
+         ignored = get_signals(line.strip_prefix("SigIgn:").expect("An error has occurred while parsing the list of ignored signals for this process"));
       }
       if line.starts_with("SigBlk:")
       {
-         blocked = get_signals(line.strip_prefix("SigBlk:").expect("An error has occurred while parsing the list of blocked signals for this process"))?;
+         blocked = get_signals(line.strip_prefix("SigBlk:").expect("An error has occurred while parsing the list of blocked signals for this process"));
       }
       if line.starts_with("SigPnd:")
       {
-         thread_pending = get_signals(line.strip_prefix("SigPnd:").expect("An error has occurred while parsing the list of pending signals for this thread"))?;
+         thread_pending = get_signals(line.strip_prefix("SigPnd:").expect("An error has occurred while parsing the list of pending signals for this thread"));
       }
       if line.starts_with("ShdPnd:")
       {
-         process_pending = get_signals(line.strip_prefix("ShdPnd:").expect("An error has occurred while parsing the list of pending signals for this process"))?;
+         process_pending = get_signals(line.strip_prefix("ShdPnd:").expect("An error has occurred while parsing the list of pending signals for this process"));
       }
    }
    println!("Signals caught by {}:", str_pid);
