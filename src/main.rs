@@ -7,7 +7,40 @@ use std::process::Command;
 
 fn name_signal(num: u32) -> std::io::Result<String>
 {
+   let rt_min: u32 = match libc::SIGRTMIN().try_into()
+   {
+      Ok(r) => r,
+      Err(_) => { return Err(Error::new(ErrorKind::InvalidData, "Conversion has failed")) },
+   };
+   let rt_max: u32 = match libc::SIGRTMAX().try_into()
+   {
+      Ok(r) => r,
+      Err(_) => { return Err(Error::new(ErrorKind::InvalidData, "Conversion has failed")) },
+   };
+   if num >= rt_min
+   {
+      if num > rt_max { return Err(Error::new(ErrorKind::InvalidData, "Conversion has failed")); }
+      if num == rt_min { return Ok(String::from("SIGRTMIN")); }
+      return Ok(format!("SIGRTMIN+{}", num-rt_min));
+   } // */
    let kill_cmd = Command::new("kill").args(["-l", &num.to_string()]).output()?;
+   if !kill_cmd.status.success()
+   {
+      return Err(Error::new(ErrorKind::ConnectionReset, String::from_utf8(kill_cmd.stderr).unwrap_or(String::from("Unknown error"))));
+   }
+   let result = match String::from_utf8(kill_cmd.stdout)
+   {
+      Ok(r) => r,
+      Err(_) => { return Err(Error::new(ErrorKind::InvalidData, "Conversion has failed")) },
+   };
+   Ok(String::from("SIG") + &result)
+}
+
+fn shell_name_signal(num: u32) -> std::io::Result<String>
+{
+   let to_str = num.to_string();
+   let cmd_arg = format!("kill -l {to_str}");
+   let kill_cmd = Command::new("/bin/sh").args(["-c", &cmd_arg]).output()?;
    if !kill_cmd.status.success()
    {
       return Err(Error::new(ErrorKind::ConnectionReset, String::from_utf8(kill_cmd.stderr).unwrap_or(String::from("Unknown error"))));
@@ -39,11 +72,11 @@ fn get_signals(s: &str) -> Vec<u32>
       }
       if n_str == '4' || n_str == '5' || n_str == '6' || n_str == '7' || n_str == 'c' || n_str == 'd' || n_str == 'e' || n_str == 'f'
       {
-         result.push(offset+4);
+         result.push(offset+3);
       }
       if n_str == '8' || n_str == '9' || n_str == 'a' || n_str == 'b' || n_str == 'c' || n_str == 'd' || n_str == 'e' || n_str == 'f'
       {
-         result.push(offset+8);
+         result.push(offset+4);
       }
       offset += 4;
    } // */
@@ -127,7 +160,7 @@ fn main() -> std::io::Result<()> {
    println!("Signals caught by {}:", str_pid);
    for signal in caught
    {
-      let name = name_signal(signal)?;
+      let name = name_signal(signal).unwrap_or_else(|_| shell_name_signal(signal).unwrap_or(format!("Unknown signal {signal}")));
       if name.len() > 3
       {
          println!("{}", name.trim());
@@ -136,7 +169,7 @@ fn main() -> std::io::Result<()> {
    println!("Signals ignored by {}:", str_pid);
    for signal in ignored
    {
-      let name = name_signal(signal)?;
+      let name = name_signal(signal).unwrap_or_else(|_| shell_name_signal(signal).unwrap_or(format!("Unknown signal {signal}")));
       if name.len() > 3
       {
          println!("{}", name.trim());
@@ -145,7 +178,7 @@ fn main() -> std::io::Result<()> {
    println!("Signals blocked by {}:", str_pid);
    for signal in blocked
    {
-      let name = name_signal(signal)?;
+      let name = name_signal(signal).unwrap_or_else(|_| shell_name_signal(signal).unwrap_or(format!("Unknown signal {signal}")));
       if name.len() > 3
       {
          println!("{}", name.trim());
@@ -154,7 +187,7 @@ fn main() -> std::io::Result<()> {
    println!("Signals pending for {}:", str_pid);
    for signal in thread_pending
    {
-      let name = name_signal(signal)?;
+      let name = name_signal(signal).unwrap_or_else(|_| shell_name_signal(signal).unwrap_or(format!("Unknown signal {signal}")));
       if name.len() > 3
       {
          println!("{}", name.trim());
